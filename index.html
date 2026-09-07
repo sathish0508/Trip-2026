@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trip Advance & Expense Tracker</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- External Libraries: html2pdf for Receipt Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div class="mobile-app">
+        <!-- Top App Bar -->
+        <header class="app-bar">
+            <div class="app-bar-brand">
+                <div class="app-logo"><i class="fa-solid fa-plane"></i></div>
+                <div>
+                    <h1 id="tripTitle">Trip 2026</h1>
+                    <p class="subtext">Advance & Expense Tracker</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="admin-btn" id="btnLockToggle" title="Admin Login">
+                    <i class="fa-solid fa-lock" id="adminLockIcon"></i>
+                    <span id="adminLockText">Admin</span>
+                </button>
+                <div class="sync-pill" id="syncStatusBadge">
+                    <span class="dot offline"></span>
+                    <span id="syncText">Local</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Scrollable Screen -->
+        <main class="app-body">
+
+            <!-- SCREEN 1: ADVANCE OVERVIEW (Paid / Not Paid Summary) -->
+            <section class="screen active" id="screen-overview">
+                <!-- Summary Card -->
+                <div class="hero-card">
+                    <div class="hero-top">
+                        <span>Total Approved Advances</span>
+                        <h2 id="totalCollectedAmt">₹0</h2>
+                    </div>
+                    <div class="progress-box">
+                        <div class="progress-info">
+                            <span id="paidRatioText">0 of 0 Paid</span>
+                            <span id="paidPercentText">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="advanceProgressBar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="hero-stats-row">
+                        <div class="mini-stat">
+                            <i class="fa-solid fa-circle-check text-emerald"></i>
+                            <div>
+                                <small>Approved Paid</small>
+                                <strong id="cntPaid">0</strong>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <i class="fa-solid fa-hourglass-half text-amber"></i>
+                            <div>
+                                <small>In Queue</small>
+                                <strong id="cntPendingQueue">0</strong>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <i class="fa-solid fa-circle-xmark text-rose"></i>
+                            <div>
+                                <small>Not Paid</small>
+                                <strong id="cntUnpaid">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="action-grid">
+                    <button class="action-btn primary" id="btnQuickPay">
+                        <i class="fa-solid fa-receipt"></i>
+                        <span>Upload Screenshot & Submit Receipt</span>
+                    </button>
+                    <button class="action-btn secondary" id="btnQuickExpense">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span>Add Trip Expense / Contribution</span>
+                    </button>
+                </div>
+
+                <!-- Pending Admin Approvals Queue Alert (If Any) -->
+                <div class="section-header hidden" id="sectionQueueAlert">
+                    <h3><i class="fa-solid fa-clock text-amber"></i> Submissions Awaiting Admin Approval</h3>
+                    <span class="count-badge warning" id="badgeQueueAlert">0 Pending</span>
+                </div>
+                <div class="member-cards-list hidden" id="publicQueueAlertList">
+                    <!-- Dynamic Queue list -->
+                </div>
+
+                <!-- Unpaid Members List -->
+                <div class="section-header margin-top">
+                    <h3><i class="fa-solid fa-user-xmark text-rose"></i> Outstanding Advance Members</h3>
+                    <span class="count-badge warning" id="badgePendingCount">0 Members</span>
+                </div>
+                <div class="member-cards-list" id="unpaidMembersList">
+                    <!-- Dynamic unpaid list -->
+                </div>
+
+                <!-- Paid Members List -->
+                <div class="section-header margin-top">
+                    <h3><i class="fa-solid fa-shield-check text-emerald"></i> Approved & Paid Members</h3>
+                    <span class="count-badge success" id="badgePaidCount">0 Members</span>
+                </div>
+                <div class="member-cards-list" id="paidMembersList">
+                    <!-- Dynamic paid list -->
+                </div>
+            </section>
+
+            <!-- SCREEN 2: TRIP MEMBERS -->
+            <section class="screen" id="screen-members">
+                <div class="screen-header">
+                    <div>
+                        <h2>Trip Members</h2>
+                        <p>Availability & Advance Status</p>
+                    </div>
+                    <button class="btn btn-sm btn-primary hidden" id="btnAddMemberScreen">
+                        <i class="fa-solid fa-plus"></i> Add Member
+                    </button>
+                </div>
+
+                <div class="member-cards-list" id="allMembersList">
+                    <!-- Dynamic list of all members -->
+                </div>
+            </section>
+
+            <!-- SCREEN 3: TRIP EXPENSES & BUDGET LEDGER (NEW) -->
+            <section class="screen" id="screen-expenses">
+                <div class="screen-header">
+                    <div>
+                        <h2>Trip Expenses & Budget</h2>
+                        <p>Track contributions, group splits, and net settlements</p>
+                    </div>
+                    <button class="btn btn-sm btn-emerald" id="btnOpenAddExpenseModal">
+                        <i class="fa-solid fa-plus"></i> Add Expense
+                    </button>
+                </div>
+
+                <!-- Expense Stats Card -->
+                <div class="hero-card" style="background: linear-gradient(135deg, #059669, #10b981);">
+                    <div class="hero-top">
+                        <span>Total Actual Trip Spending</span>
+                        <h2 id="expTotalAmount">₹0</h2>
+                    </div>
+                    <div class="hero-stats-row margin-top">
+                        <div class="mini-stat">
+                            <i class="fa-solid fa-users text-emerald"></i>
+                            <div>
+                                <small>Per-Head Share</small>
+                                <strong id="expAvgPerHead">₹0</strong>
+                            </div>
+                        </div>
+                        <div class="mini-stat">
+                            <i class="fa-solid fa-receipt text-amber"></i>
+                            <div>
+                                <small>Total Items</small>
+                                <strong id="expItemCount">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Who Owes Whom Settlement Matrix -->
+                <div class="card margin-bottom">
+                    <div class="card-title-row">
+                        <h3><i class="fa-solid fa-scale-balanced text-amber"></i> Net Settlement (Who Owes Whom)</h3>
+                    </div>
+                    <div class="settlement-container" id="settlementMatrixList">
+                        <!-- Dynamic settlement calculation list -->
+                    </div>
+                </div>
+
+                <!-- Per-Member Contribution & Share Breakdown -->
+                <div class="card margin-bottom">
+                    <div class="card-title-row">
+                        <h3><i class="fa-solid fa-user-group"></i> Member Contributions & Net Balances</h3>
+                    </div>
+                    <div class="member-cards-list" id="memberBalancesList">
+                        <!-- Dynamic member balance cards -->
+                    </div>
+                </div>
+
+                <!-- Expense Ledger History List -->
+                <div class="section-header">
+                    <h3><i class="fa-solid fa-list-check"></i> Expense History Ledger</h3>
+                </div>
+                <div class="member-cards-list" id="expenseHistoryList">
+                    <!-- Dynamic expense rows -->
+                </div>
+            </section>
+
+            <!-- SCREEN 4: PAY & GET RECEIPT -->
+            <section class="screen" id="screen-pay">
+                <div class="screen-header">
+                    <div>
+                        <h2>Submit Payment & Get Receipt</h2>
+                        <p>Upload your payment screenshot to send for Admin Verification</p>
+                    </div>
+                </div>
+
+                <div class="card form-card">
+                    <form id="paymentReceiptForm">
+                        <div class="form-group">
+                            <label for="payMemberSelect"><i class="fa-solid fa-user"></i> Select Member Name *</label>
+                            <select id="payMemberSelect" class="form-control" required>
+                                <!-- Dynamic member list -->
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="payAmountInput"><i class="fa-solid fa-indian-rupee-sign"></i> Payment Amount (₹) *</label>
+                            <input type="number" id="payAmountInput" class="form-control" placeholder="5000" step="100" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="payUtrInput"><i class="fa-solid fa-hashtag"></i> UPI Ref No. / Transaction ID (Optional)</label>
+                            <input type="text" id="payUtrInput" class="form-control" placeholder="e.g. 423891029384">
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-image"></i> Payment Screenshot (GPay / PhonePe / Paytm) *</label>
+                            <div class="mobile-upload-box" id="uploadBoxTrigger">
+                                <input type="file" id="screenshotFileInput" accept="image/*" class="hidden-file-input">
+                                <div class="upload-content" id="uploadDefaultState">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span>Tap to upload payment screenshot</span>
+                                    <small>JPG, PNG or WEBP</small>
+                                </div>
+                                <div class="upload-preview hidden" id="uploadPreviewState">
+                                    <img id="previewImageThumb" src="" alt="Screenshot Preview">
+                                    <button type="button" class="btn-remove-photo" id="btnRemovePhoto">&times;</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-emerald btn-block margin-top">
+                            <i class="fa-solid fa-paper-plane"></i> Submit Payment for Admin Approval
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Recent Receipts -->
+                <div class="section-header margin-top">
+                    <h3><i class="fa-solid fa-file-invoice"></i> Submitted Receipts</h3>
+                </div>
+                <div class="receipts-mini-list" id="issuedReceiptsList">
+                    <!-- Dynamic receipts list -->
+                </div>
+            </section>
+
+            <!-- SCREEN 5: ADMIN PANEL -->
+            <section class="screen" id="screen-admin">
+                <!-- Locked State -->
+                <div id="adminLockedView" class="card form-card text-center">
+                    <div class="lock-avatar"><i class="fa-solid fa-user-lock"></i></div>
+                    <h2>Admin Password Required</h2>
+                    <p class="subtext margin-bottom">Enter admin password to review approval queue & manage members.</p>
+                    <form id="adminLoginForm">
+                        <div class="form-group">
+                            <input type="password" id="adminPasswordInput" class="form-control text-center" placeholder="Enter Admin Password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fa-solid fa-key"></i> Unlock Admin Panel
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Unlocked Admin View -->
+                <div id="adminUnlockedView" class="hidden">
+                    <div class="screen-header">
+                        <div>
+                            <h2><i class="fa-solid fa-user-shield text-emerald"></i> Admin Control Panel</h2>
+                            <p>Approve/Reject Submissions & Manage Trip</p>
+                        </div>
+                        <button class="btn btn-xs btn-secondary" id="btnLockAdmin">
+                            <i class="fa-solid fa-lock"></i> Lock Admin
+                        </button>
+                    </div>
+
+                    <!-- Pending Approval Queue -->
+                    <div class="card margin-bottom">
+                        <div class="card-title-row">
+                            <h3><i class="fa-solid fa-hourglass-half text-amber"></i> Approval Queue (<span id="adminQueueCount">0</span>)</h3>
+                        </div>
+                        <div class="admin-queue-list" id="adminQueueList">
+                            <!-- Dynamic admin queue items -->
+                        </div>
+                    </div>
+
+                    <!-- Admin Member Controls -->
+                    <div class="card margin-top">
+                        <div class="card-title-row">
+                            <h3><i class="fa-solid fa-users-gear"></i> Member Actions</h3>
+                            <button class="btn btn-sm btn-primary" id="btnAdminAddMember">
+                                <i class="fa-solid fa-plus"></i> Add New Member
+                            </button>
+                        </div>
+                        <div class="admin-members-list" id="adminMembersList">
+                            <!-- Dynamic admin member row -->
+                        </div>
+                    </div>
+
+                    <!-- Google Sheets Settings -->
+                    <div class="card margin-top">
+                        <h3><i class="fa-solid fa-file-excel text-emerald"></i> Google Sheet Settings</h3>
+                        <form id="sheetSettingsForm" class="margin-top">
+                            <div class="form-group">
+                                <label>Sheet ID</label>
+                                <input type="text" class="form-control" value="1877_oKGn_ySXxopRfzIP791MCrkZYWMC0eqKIT3EpZ0" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="appScriptUrl">Google Apps Script Web App URL</label>
+                                <input type="url" id="appScriptUrl" class="form-control" value="https://script.google.com/macros/s/AKfycbzgI_VZ97KzVECzpQEBO1LCDg2n_pt1jRQy3lURrhyySnAcggGqgO3CPWzQl1bfDzNU/exec" placeholder="https://script.google.com/macros/s/.../exec">
+                            </div>
+                            <button type="submit" class="btn btn-emerald btn-block">
+                                <i class="fa-solid fa-floppy-disk"></i> Save & Test Sync
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Mobile Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-screen="overview">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Advance</span>
+            </button>
+            <button class="nav-item" data-screen="members">
+                <i class="fa-solid fa-users"></i>
+                <span>Members</span>
+            </button>
+            <button class="nav-item" data-screen="expenses">
+                <i class="fa-solid fa-wallet"></i>
+                <span>Expenses</span>
+            </button>
+            <button class="nav-item" data-screen="pay">
+                <i class="fa-solid fa-receipt"></i>
+                <span>Pay & Receipt</span>
+            </button>
+            <button class="nav-item" data-screen="admin">
+                <i class="fa-solid fa-user-shield"></i>
+                <span>Admin</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- MODAL: ADD / EDIT MEMBER -->
+    <div class="modal-overlay hidden" id="memberModal">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <h3 id="modalMemberTitle"><i class="fa-solid fa-user-plus"></i> Add Trip Member</h3>
+                <button class="btn-close-modal" data-close="memberModal">&times;</button>
+            </div>
+            <form id="memberForm">
+                <input type="hidden" id="memberIdHidden">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="memberName">Member Name *</label>
+                        <input type="text" id="memberName" class="form-control" placeholder="e.g. Sathish Kumar" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="memberPhone">Phone / WhatsApp Number</label>
+                        <input type="tel" id="memberPhone" class="form-control" placeholder="+91 9876543210">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="memberAdvance">Advance Amt (₹) *</label>
+                            <input type="number" id="memberAdvance" class="form-control" value="5000" step="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="memberDays">Days Available *</label>
+                            <input type="number" id="memberDays" class="form-control" value="4" min="1" max="30" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="memberStatusSelect">Payment Status</label>
+                        <select id="memberStatusSelect" class="form-control">
+                            <option value="Not Paid">Not Paid</option>
+                            <option value="Paid">Paid (Approved)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="memberModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT EXPENSE (NEW) -->
+    <div class="modal-overlay hidden" id="expenseModal">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-wallet text-emerald"></i> Log Trip Expense / Contribution</h3>
+                <button class="btn-close-modal" data-close="expenseModal">&times;</button>
+            </div>
+            <form id="expenseForm">
+                <input type="hidden" id="expenseIdHidden">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="expenseTitle">Expense Description / Item *</label>
+                        <input type="text" id="expenseTitle" class="form-control" placeholder="e.g. Villa Booking, Fuel Car 1, Seafood Lunch" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expenseAmount">Amount Paid (₹) *</label>
+                            <input type="number" id="expenseAmount" class="form-control" placeholder="3500" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="expenseCategory">Category *</label>
+                            <select id="expenseCategory" class="form-control" required>
+                                <option value="Stay & Hotel">Stay & Hotel</option>
+                                <option value="Food & Dining">Food & Dining</option>
+                                <option value="Fuel & Transport">Fuel & Transport</option>
+                                <option value="Activities & Sightseeing">Activities & Sightseeing</option>
+                                <option value="Shopping & Misc">Shopping & Misc</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expensePaidBy">Who Paid Out of Pocket? *</label>
+                            <select id="expensePaidBy" class="form-control" required>
+                                <!-- Dynamic member select options -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="expenseDate">Expense Date *</label>
+                            <input type="date" id="expenseDate" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group margin-top-sm">
+                        <label>Split Among Included Members (Gang / Group)</label>
+                        <div class="split-members-container" id="expenseSplitCheckboxes">
+                            <!-- Dynamic member checkboxes -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-close="expenseModal">Cancel</button>
+                    <button type="submit" class="btn btn-emerald">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DIGITAL RECEIPT VIEW & PDF/WHATSAPP SHARE -->
+    <div class="modal-overlay hidden" id="receiptModal">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-certificate text-emerald"></i> Payment Receipt</h3>
+                <button class="btn-close-modal" data-close="receiptModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="digital-receipt-card" id="digitalReceiptDoc">
+                    <div class="rcpt-brand">
+                        <i class="fa-solid fa-plane"></i>
+                        <div>
+                            <h2>TRIP 2026</h2>
+                            <small>Advance Payment Receipt</small>
+                        </div>
+                    </div>
+                    <div class="rcpt-stamp" id="rcptStampBadge">PENDING</div>
+                    
+                    <div class="rcpt-body">
+                        <div class="rcpt-row">
+                            <span>Receipt No:</span>
+                            <strong id="rcptNumber">TR-001</strong>
+                        </div>
+                        <div class="rcpt-row">
+                            <span>Date:</span>
+                            <strong id="rcptDate">07 Sep 2026</strong>
+                        </div>
+                        <div class="rcpt-row">
+                            <span>Member Name:</span>
+                            <strong id="rcptMemberName">Sathish Kumar</strong>
+                        </div>
+                        <div class="rcpt-row">
+                            <span>Approval Status:</span>
+                            <span id="rcptStatusPill" class="badge warning">Pending Admin Approval</span>
+                        </div>
+                        <div class="rcpt-row" id="rcptUtrRow">
+                            <span>Ref / UTR ID:</span>
+                            <code id="rcptUtr">423891029384</code>
+                        </div>
+
+                        <div class="rcpt-screenshot-box hidden" id="rcptScreenshotBox">
+                            <small>Attached Payment Proof:</small>
+                            <br>
+                            <img id="rcptProofImg" src="" alt="Payment Proof">
+                        </div>
+
+                        <div class="rcpt-total-box">
+                            <span>Total Amount Paid</span>
+                            <h3 id="rcptAmount">₹5,000.00</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-emerald" id="btnShareWhatsApp">
+                    <i class="fa-brands fa-whatsapp"></i> Share on WhatsApp
+                </button>
+                <button type="button" class="btn btn-primary" id="btnDownloadPdf">
+                    <i class="fa-solid fa-download"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-box" id="toastBox"></div>
+
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
