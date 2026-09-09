@@ -41,8 +41,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     switchScreen(initialScreen);
     
-    // Fetch Live Data from Google Sheet on Launch
+    // Initial Fetch on Launch
     fetchLiveFromGoogleSheet();
+
+    // 10-Second Auto Sync Interval
+    setInterval(() => {
+        fetchLiveFromGoogleSheet();
+    }, 10000);
+
+    // Auto-sync when app is brought back to foreground
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            fetchLiveFromGoogleSheet();
+        }
+    });
+
+    // Make Sync Pill Badge clickable for Manual Sync
+    const syncBadge = document.getElementById('syncStatusBadge');
+    if (syncBadge) {
+        syncBadge.style.cursor = 'pointer';
+        syncBadge.title = 'Tap to Sync Now';
+        syncBadge.addEventListener('click', () => {
+            showToast('Syncing with Google Sheet...', 'info');
+            fetchLiveFromGoogleSheet();
+        });
+    }
 });
 
 window.addEventListener('hashchange', () => {
