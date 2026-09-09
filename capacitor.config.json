@@ -1,0 +1,10 @@
+{
+  "appId": "com.trip2026.expensetracker",
+  "appName": "Trip 2026",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://sathish0508.github.io/Trip-2026/",
+    "cleartext": true
+  }
+}
