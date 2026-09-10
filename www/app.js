@@ -135,9 +135,9 @@ function fetchLiveFromGoogleSheet() {
                 const deletedMemberIds = new Set((STATE.deletedMemberIds || []).map(id => String(id)));
                 const deletedExpenseIds = new Set((STATE.deletedExpenseIds || []).map(id => String(id)));
 
-                // 1. Sync Members
+                // 1. Sync Members (Merge sheet members with local pending members)
                 if (Array.isArray(res.data.members)) {
-                    STATE.members = res.data.members
+                    const sheetMembers = res.data.members
                         .filter(m => !deletedMemberIds.has(String(m.ID || m.id)))
                         .map((m, idx) => {
                             const mId = String(m.ID || m.id || 'm_' + idx);
@@ -152,6 +152,20 @@ function fetchLiveFromGoogleSheet() {
                                 utr: String(m.UTR || m.utr || '')
                             };
                         });
+
+                    const localMembers = STATE.members.filter(m => !deletedMemberIds.has(String(m.id)));
+                    const mergedMembers = [...localMembers];
+
+                    sheetMembers.forEach(sm => {
+                        const idx = mergedMembers.findIndex(lm => String(lm.id) === String(sm.id) || (lm.name && lm.name.trim().toLowerCase() === sm.name.trim().toLowerCase()));
+                        if (idx !== -1) {
+                            mergedMembers[idx] = Object.assign({}, mergedMembers[idx], sm);
+                        } else {
+                            mergedMembers.push(sm);
+                        }
+                    });
+
+                    STATE.members = mergedMembers;
                 }
 
                 // 2. Sync Queue (Merge sheet queue with local pending queue items)
@@ -219,7 +233,7 @@ function fetchLiveFromGoogleSheet() {
                     });
                 }
 
-                // 4. Sync Expenses
+                // 4. Sync Expenses (Merge sheet expenses with local pending expenses)
                 if (Array.isArray(res.data.expenses)) {
                     const sheetExpenses = res.data.expenses
                         .filter(ex => !deletedExpenseIds.has(String(ex.ID || ex.id)))
@@ -237,14 +251,19 @@ function fetchLiveFromGoogleSheet() {
                             };
                         }).filter(ex => ex.title && ex.amount > 0);
 
+                    const localExpenses = STATE.expenses.filter(ex => !deletedExpenseIds.has(String(ex.id)));
+                    const mergedExpenses = [...localExpenses];
+
                     sheetExpenses.forEach(se => {
-                        const existingIdx = STATE.expenses.findIndex(e => e.id === se.id);
+                        const existingIdx = mergedExpenses.findIndex(le => String(le.id) === String(se.id));
                         if (existingIdx !== -1) {
-                            STATE.expenses[existingIdx] = se;
+                            mergedExpenses[existingIdx] = Object.assign({}, mergedExpenses[existingIdx], se);
                         } else {
-                            STATE.expenses.push(se);
+                            mergedExpenses.push(se);
                         }
                     });
+
+                    STATE.expenses = mergedExpenses;
                 }
 
                 saveStorage();
