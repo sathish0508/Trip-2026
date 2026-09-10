@@ -154,12 +154,12 @@ function fetchLiveFromGoogleSheet() {
                         });
                 }
 
-                // 2. Sync Queue
+                // 2. Sync Queue (Merge sheet queue with local pending queue items)
                 if (Array.isArray(res.data.queue)) {
                     const rejectedQueueIds = new Set((STATE.rejectedQueueIds || []).map(id => String(id)));
                     const rejectedReceiptNos = new Set((STATE.rejectedReceiptNos || []).map(no => String(no)));
 
-                    STATE.queue = res.data.queue
+                    const sheetQueueItems = res.data.queue
                         .filter(q => String(q.Status || q.status) === 'Pending Approval')
                         .filter(q => !approvedReceiptNos.has(String(q['Receipt No'] || q.receiptNo)))
                         .filter(q => !approvedQueueIds.has(String(q['Queue ID'] || q.id)))
@@ -176,6 +176,28 @@ function fetchLiveFromGoogleSheet() {
                             proofImg: String(q.proofImg || ''),
                             status: 'Pending Approval'
                         }));
+
+                    // Retain local pending items that haven't been approved or rejected yet
+                    const localPendingQueue = STATE.queue.filter(q => 
+                        q.status === 'Pending Approval' &&
+                        !approvedReceiptNos.has(q.receiptNo) &&
+                        !approvedQueueIds.has(q.id) &&
+                        !rejectedQueueIds.has(q.id) &&
+                        !rejectedReceiptNos.has(q.receiptNo)
+                    );
+
+                    // Merge without duplicates
+                    const mergedQueue = [...localPendingQueue];
+                    sheetQueueItems.forEach(sq => {
+                        const idx = mergedQueue.findIndex(l => (l.id && l.id === sq.id) || (l.receiptNo && l.receiptNo === sq.receiptNo));
+                        if (idx !== -1) {
+                            mergedQueue[idx] = Object.assign({}, mergedQueue[idx], sq);
+                        } else {
+                            mergedQueue.push(sq);
+                        }
+                    });
+
+                    STATE.queue = mergedQueue;
                 }
 
                 // 3. Sync Receipts
