@@ -14,6 +14,9 @@ const STATE = {
     expenses: [],
     rejectedQueueIds: [],
     rejectedReceiptNos: [],
+    deletedMemberIds: [],
+    deletedExpenseIds: [],
+    approvedQueueIds: [],
     config: {
         sheetId: '1877_oKGn_ySXxopRfzIP791MCrkZYWMC0eqKIT3EpZ0',
         webAppUrl: 'https://script.google.com/macros/s/AKfycbzgI_VZ97KzVECzpQEBO1LCDg2n_pt1jRQy3lURrhyySnAcggGqgO3CPWzQl1bfDzNU/exec'
@@ -92,6 +95,9 @@ function loadStorage() {
             STATE.expenses = data.expenses || SEED_EXPENSES;
             STATE.rejectedQueueIds = data.rejectedQueueIds || [];
             STATE.rejectedReceiptNos = data.rejectedReceiptNos || [];
+            STATE.deletedMemberIds = data.deletedMemberIds || [];
+            STATE.deletedExpenseIds = data.deletedExpenseIds || [];
+            STATE.approvedQueueIds = data.approvedQueueIds || [];
             STATE.config = data.config || {};
             STATE.config.sheetId = '1877_oKGn_ySXxopRfzIP791MCrkZYWMC0eqKIT3EpZ0';
             STATE.config.webAppUrl = 'https://script.google.com/macros/s/AKfycbzgI_VZ97KzVECzpQEBO1LCDg2n_pt1jRQy3lURrhyySnAcggGqgO3CPWzQl1bfDzNU/exec';
@@ -125,22 +131,27 @@ function fetchLiveFromGoogleSheet() {
             if (res.success && res.data) {
                 const approvedMemberIds = new Set(STATE.receipts.filter(r => r.status === 'Approved').map(r => r.memberId));
                 const approvedReceiptNos = new Set(STATE.receipts.filter(r => r.status === 'Approved').map(r => r.receiptNo));
+                const approvedQueueIds = new Set((STATE.approvedQueueIds || []).map(id => String(id)));
+                const deletedMemberIds = new Set((STATE.deletedMemberIds || []).map(id => String(id)));
+                const deletedExpenseIds = new Set((STATE.deletedExpenseIds || []).map(id => String(id)));
 
                 // 1. Sync Members
                 if (Array.isArray(res.data.members)) {
-                    STATE.members = res.data.members.map((m, idx) => {
-                        const mId = String(m.ID || m.id || 'm_' + idx);
-                        const isLocallyApproved = approvedMemberIds.has(mId);
-                        return {
-                            id: mId,
-                            name: String(m.Name || m.name || ''),
-                            phone: String(m.Phone || m.phone || ''),
-                            advance: Number(m['Advance Required'] || m.advance || 5000),
-                            days: Number(m['Days Available'] || m.days || 4),
-                            status: isLocallyApproved ? 'Paid' : String(m.Status || m.status || 'Not Paid'),
-                            utr: String(m.UTR || m.utr || '')
-                        };
-                    });
+                    STATE.members = res.data.members
+                        .filter(m => !deletedMemberIds.has(String(m.ID || m.id)))
+                        .map((m, idx) => {
+                            const mId = String(m.ID || m.id || 'm_' + idx);
+                            const isLocallyApproved = approvedMemberIds.has(mId);
+                            return {
+                                id: mId,
+                                name: String(m.Name || m.name || ''),
+                                phone: String(m.Phone || m.phone || ''),
+                                advance: Number(m['Advance Required'] || m.advance || 5000),
+                                days: Number(m['Days Available'] || m.days || 4),
+                                status: isLocallyApproved ? 'Paid' : String(m.Status || m.status || 'Not Paid'),
+                                utr: String(m.UTR || m.utr || '')
+                            };
+                        });
                 }
 
                 // 2. Sync Queue
@@ -151,6 +162,7 @@ function fetchLiveFromGoogleSheet() {
                     STATE.queue = res.data.queue
                         .filter(q => String(q.Status || q.status) === 'Pending Approval')
                         .filter(q => !approvedReceiptNos.has(String(q['Receipt No'] || q.receiptNo)))
+                        .filter(q => !approvedQueueIds.has(String(q['Queue ID'] || q.id)))
                         .filter(q => !rejectedQueueIds.has(String(q['Queue ID'] || q.id)))
                         .filter(q => !rejectedReceiptNos.has(String(q['Receipt No'] || q.receiptNo)))
                         .map(q => ({
@@ -185,21 +197,23 @@ function fetchLiveFromGoogleSheet() {
                     });
                 }
 
-                // 4. Sync Expenses (Merge sheet expenses without wiping local entries)
+                // 4. Sync Expenses
                 if (Array.isArray(res.data.expenses)) {
-                    const sheetExpenses = res.data.expenses.map((ex, idx) => {
-                        let dStr = String(ex.Date || ex.date || '');
-                        if (dStr.includes('T')) dStr = dStr.split('T')[0];
-                        return {
-                            id: String(ex.ID || ex.id || 'e_' + idx),
-                            date: dStr,
-                            title: String(ex.Title || ex.title || ''),
-                            category: String(ex.Category || ex.category || 'Misc'),
-                            amount: Number(ex.Amount || ex.amount || 0),
-                            paidBy: String(ex['Paid By'] || ex.paidBy || ex.paid_by || ''),
-                            splitAmong: parseSplitAmong(ex['Split Among'] || ex.splitAmong || ex.split_among)
-                        };
-                    }).filter(ex => ex.title && ex.amount > 0);
+                    const sheetExpenses = res.data.expenses
+                        .filter(ex => !deletedExpenseIds.has(String(ex.ID || ex.id)))
+                        .map((ex, idx) => {
+                            let dStr = String(ex.Date || ex.date || '');
+                            if (dStr.includes('T')) dStr = dStr.split('T')[0];
+                            return {
+                                id: String(ex.ID || ex.id || 'e_' + idx),
+                                date: dStr,
+                                title: String(ex.Title || ex.title || ''),
+                                category: String(ex.Category || ex.category || 'Misc'),
+                                amount: Number(ex.Amount || ex.amount || 0),
+                                paidBy: String(ex['Paid By'] || ex.paidBy || ex.paid_by || ''),
+                                splitAmong: parseSplitAmong(ex['Split Among'] || ex.splitAmong || ex.split_among)
+                            };
+                        }).filter(ex => ex.title && ex.amount > 0);
 
                     sheetExpenses.forEach(se => {
                         const existingIdx = STATE.expenses.findIndex(e => e.id === se.id);
@@ -708,9 +722,12 @@ function renderExpenseHistory() {
                         <p>${e.date} | Paid by: <strong>${payerName}</strong> (${count} Members Split)</p>
                     </div>
                 </div>
-                <div class="member-card-right">
-                    <strong style="color: var(--emerald);">₹${Number(e.amount).toLocaleString('en-IN')}</strong>
-                    <span class="count-badge success">${e.category}</span>
+                <div class="member-card-right" style="display: flex; align-items: center; gap: 8px;">
+                    <div>
+                        <strong style="color: var(--emerald); display: block; text-align: right;">₹${Number(e.amount).toLocaleString('en-IN')}</strong>
+                        <span class="count-badge success">${e.category}</span>
+                    </div>
+                    <button class="btn btn-xs btn-secondary" style="color: var(--rose); padding: 6px 8px;" onclick="deleteExpense('${e.id}')" title="Delete Expense"><i class="fa-solid fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -849,7 +866,9 @@ window.approveQueueSubmission = function(queueId) {
         STATE.receipts.unshift(receiptObj);
     }
 
-    // 3. REMOVE FROM PENDING QUEUE IMMEDIATELY
+    // 3. REMOVE FROM PENDING QUEUE IMMEDIATELY & RECORD APPROVED ID
+    STATE.approvedQueueIds = STATE.approvedQueueIds || [];
+    if (queueId) STATE.approvedQueueIds.push(String(queueId));
     STATE.queue.splice(itemIdx, 1);
 
     saveStorage();
@@ -1202,10 +1221,25 @@ window.editMember = function(id) {
 
 window.deleteMember = function(id) {
     if (confirm('Delete member?')) {
+        STATE.deletedMemberIds = STATE.deletedMemberIds || [];
+        if (id) STATE.deletedMemberIds.push(String(id));
         STATE.members = STATE.members.filter(m => m.id !== id);
         saveStorage();
         renderApp();
-        showToast('Member deleted');
+        showToast('Member deleted', 'info');
+        postToSheetAsync({ action: 'DELETE_MEMBER', memberId: id });
+    }
+};
+
+window.deleteExpense = function(id) {
+    if (confirm('Delete this trip expense?')) {
+        STATE.deletedExpenseIds = STATE.deletedExpenseIds || [];
+        if (id) STATE.deletedExpenseIds.push(String(id));
+        STATE.expenses = STATE.expenses.filter(e => e.id !== id);
+        saveStorage();
+        renderApp();
+        showToast('Expense deleted', 'info');
+        postToSheetAsync({ action: 'DELETE_EXPENSE', expenseId: id });
     }
 };
 

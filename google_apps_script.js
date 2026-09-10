@@ -234,6 +234,36 @@ function doPost(e) {
       }
       response = { success: true, message: 'Status updated' };
     }
+
+    // ACTION: DELETE MEMBER
+    else if (action === 'DELETE_MEMBER') {
+      const sh = ss.getSheetByName(SHEET_NAMES.MEMBERS);
+      const rows = sh.getDataRange().getValues();
+      let deleted = false;
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(data.memberId)) {
+          sh.deleteRow(i + 1);
+          deleted = true;
+          break;
+        }
+      }
+      response = { success: true, message: deleted ? 'Member deleted from sheet' : 'Member not found' };
+    }
+
+    // ACTION: DELETE EXPENSE
+    else if (action === 'DELETE_EXPENSE') {
+      const sh = ss.getSheetByName(SHEET_NAMES.EXPENSES);
+      const rows = sh.getDataRange().getValues();
+      let deleted = false;
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(data.expenseId)) {
+          sh.deleteRow(i + 1);
+          deleted = true;
+          break;
+        }
+      }
+      response = { success: true, message: deleted ? 'Expense deleted from sheet' : 'Expense not found' };
+    }
   } catch (err) {
     response = { success: false, error: err.toString() };
   }
