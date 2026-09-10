@@ -19,7 +19,7 @@ const STATE = {
     approvedQueueIds: [],
     config: {
         sheetId: '1877_oKGn_ySXxopRfzIP791MCrkZYWMC0eqKIT3EpZ0',
-        webAppUrl: 'https://script.google.com/macros/s/AKfycbzgI_VZ97KzVECzpQEBO1LCDg2n_pt1jRQy3lURrhyySnAcggGqgO3CPWzQl1bfDzNU/exec'
+        webAppUrl: 'https://script.google.com/macros/s/AKfycbzeZtp421FySdPbdPkbIDJ9EqlLGJTEo7J7zIJTICgAC0u30XyzuIAzArqoYBqgBLE/exec'
     }
 };
 
@@ -100,7 +100,7 @@ function loadStorage() {
             STATE.approvedQueueIds = data.approvedQueueIds || [];
             STATE.config = data.config || {};
             STATE.config.sheetId = '1877_oKGn_ySXxopRfzIP791MCrkZYWMC0eqKIT3EpZ0';
-            STATE.config.webAppUrl = 'https://script.google.com/macros/s/AKfycbzgI_VZ97KzVECzpQEBO1LCDg2n_pt1jRQy3lURrhyySnAcggGqgO3CPWzQl1bfDzNU/exec';
+            STATE.config.webAppUrl = 'https://script.google.com/macros/s/AKfycbzeZtp421FySdPbdPkbIDJ9EqlLGJTEo7J7zIJTICgAC0u30XyzuIAzArqoYBqgBLE/exec';
         } catch (e) {
             STATE.members = SEED_MEMBERS;
             STATE.receipts = SEED_RECEIPTS;
