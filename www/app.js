@@ -1106,6 +1106,22 @@ function initForms() {
         postToSheetAsync({ action: 'ADD_EXPENSE', expense: newExp });
     });
 
+function generateUniqueReceiptNo() {
+    const existing = new Set([
+        ...STATE.receipts.map(r => String(r.receiptNo || '')),
+        ...STATE.queue.map(q => String(q.receiptNo || '')),
+        ...(STATE.rejectedReceiptNos || []).map(no => String(no))
+    ]);
+
+    let count = STATE.receipts.length + STATE.queue.length + (STATE.rejectedReceiptNos || []).length + 1;
+    let candidate = `TR-${String(count).padStart(4, '0')}`;
+    while (existing.has(candidate)) {
+        count++;
+        candidate = `TR-${String(count).padStart(4, '0')}`;
+    }
+    return candidate;
+}
+
     // Payment Form Submit -> Add to Queue for Admin Approval
     document.getElementById('paymentReceiptForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1117,7 +1133,7 @@ function initForms() {
         if (!member) return;
 
         const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-        const receiptNo = `TR-00${STATE.queue.length + STATE.receipts.length + 1}`;
+        const receiptNo = generateUniqueReceiptNo();
 
         // Create Pending Queue Entry
         const queueEntry = {
