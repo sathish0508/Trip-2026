@@ -994,6 +994,22 @@ function initUploadHandler() {
     });
 }
 
+function generateUniqueReceiptNo() {
+    const existing = new Set([
+        ...STATE.receipts.map(r => String(r.receiptNo || '')),
+        ...STATE.queue.map(q => String(q.receiptNo || '')),
+        ...(STATE.rejectedReceiptNos || []).map(no => String(no))
+    ]);
+
+    let count = STATE.receipts.length + STATE.queue.length + (STATE.rejectedReceiptNos || []).length + 1;
+    let candidate = `TR-${String(count).padStart(4, '0')}`;
+    while (existing.has(candidate)) {
+        count++;
+        candidate = `TR-${String(count).padStart(4, '0')}`;
+    }
+    return candidate;
+}
+
 function populateMemberSelect() {
     const select = document.getElementById('payMemberSelect');
     if (!select) return;
@@ -1006,6 +1022,15 @@ function populateMemberSelect() {
 
     if (selectedVal && STATE.members.some(m => m.id === selectedVal)) {
         select.value = selectedVal;
+    }
+
+    // Auto-fill amount input if empty
+    const amtInput = document.getElementById('payAmountInput');
+    if (amtInput && (!amtInput.value || Number(amtInput.value) <= 0)) {
+        const selMember = STATE.members.find(m => m.id === select.value);
+        if (selMember) {
+            amtInput.value = selMember.advance;
+        }
     }
 }
 
@@ -1124,22 +1149,6 @@ function initForms() {
         // Async post to Google Sheet
         postToSheetAsync({ action: 'ADD_EXPENSE', expense: newExp });
     });
-
-function generateUniqueReceiptNo() {
-    const existing = new Set([
-        ...STATE.receipts.map(r => String(r.receiptNo || '')),
-        ...STATE.queue.map(q => String(q.receiptNo || '')),
-        ...(STATE.rejectedReceiptNos || []).map(no => String(no))
-    ]);
-
-    let count = STATE.receipts.length + STATE.queue.length + (STATE.rejectedReceiptNos || []).length + 1;
-    let candidate = `TR-${String(count).padStart(4, '0')}`;
-    while (existing.has(candidate)) {
-        count++;
-        candidate = `TR-${String(count).padStart(4, '0')}`;
-    }
-    return candidate;
-}
 
     // Payment Form Submit -> Add to Queue for Admin Approval
     document.getElementById('paymentReceiptForm')?.addEventListener('submit', (e) => {
