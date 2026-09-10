@@ -555,6 +555,9 @@ function renderExpensesScreen() {
 function resolveMemberId(identifier) {
     if (!identifier) return null;
     const str = String(identifier).trim().toLowerCase();
+    if (str === 'pool' || str === 'trip fund' || str === 'admin pool' || str === 'common pool' || str.includes('trip fund')) {
+        return 'POOL';
+    }
     const found = STATE.members.find(m => 
         String(m.id).toLowerCase() === str || 
         String(m.name).trim().toLowerCase() === str
@@ -675,7 +678,14 @@ function showMemberBreakdownModal(memberId) {
 
         const payerId = resolveMemberId(exp.paidBy || exp.paidByName);
         const payerMember = STATE.members.find(x => x.id === payerId);
-        const payerName = payerMember ? payerMember.name : (exp.paidByName || exp.paidBy || 'Pool');
+        let payerName = 'Unknown';
+        if (payerId === 'POOL' || exp.paidBy === 'POOL' || String(exp.paidByName || '').includes('Trip Fund')) {
+            payerName = '🏦 Trip Fund (Admin)';
+        } else if (payerMember) {
+            payerName = payerMember.name;
+        } else {
+            payerName = exp.paidByName || exp.paidBy || 'Pool';
+        }
 
         const rawSplit = (exp.splitAmong && exp.splitAmong.length > 0) ? exp.splitAmong : STATE.members.map(x => x.id);
         const splitIds = rawSplit.map(s => resolveMemberId(s)).filter(Boolean);
@@ -872,7 +882,14 @@ function renderExpenseHistory() {
     container.innerHTML = STATE.expenses.map(e => {
         const payerId = resolveMemberId(e.paidBy || e.paidByName);
         const payerObj = STATE.members.find(m => m.id === payerId);
-        const payerName = payerObj ? payerObj.name : (e.paidByName || e.paidBy || 'Unknown');
+        let payerName = 'Unknown';
+        if (payerId === 'POOL' || e.paidBy === 'POOL' || String(e.paidByName || '').includes('Trip Fund')) {
+            payerName = '🏦 Trip Fund (Admin Pool)';
+        } else if (payerObj) {
+            payerName = payerObj.name;
+        } else {
+            payerName = e.paidByName || e.paidBy || 'Unknown';
+        }
         const count = (e.splitAmong && e.splitAmong.length > 0) ? e.splitAmong.length : STATE.members.length;
 
         return `
@@ -904,7 +921,10 @@ function openAddExpenseModal() {
     // Populate PaidBy select
     const payerSelect = document.getElementById('expensePaidBy');
     if (payerSelect) {
-        payerSelect.innerHTML = STATE.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        payerSelect.innerHTML = `
+            <option value="POOL">🏦 Trip Fund / Admin Pool (Collected Money)</option>
+            ${STATE.members.map(m => `<option value="${m.id}">${m.name} (Paid Out of Pocket)</option>`).join('')}
+        `;
     }
 
     // Populate Split Checkboxes
@@ -1242,7 +1262,7 @@ function initForms() {
         }
 
         const payerObj = STATE.members.find(m => m.id === paidBy);
-        const paidByName = payerObj ? payerObj.name : paidBy;
+        const paidByName = (paidBy === 'POOL') ? 'Trip Fund / Admin Pool' : (payerObj ? payerObj.name : paidBy);
 
         const splitAmongNames = splitAmong.map(mId => {
             const m = STATE.members.find(mb => mb.id === mId);

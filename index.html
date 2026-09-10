@@ -60,7 +60,7 @@
                 <!-- Summary Card -->
                 <div class="hero-card">
                     <div class="hero-top">
-                        <span>Total Approved Advances</span>
+                        <span>Total Trip Fund Collected</span>
                         <h2 id="totalCollectedAmt">₹0</h2>
                     </div>
                     <div class="progress-box">
@@ -119,12 +119,14 @@
                 </div>
 
                 <!-- Unpaid Members List -->
-                <div class="section-header margin-top">
-                    <h3><i class="fa-solid fa-user-xmark text-rose"></i> Outstanding Advance Members</h3>
-                    <span class="count-badge warning" id="badgePendingCount">0 Members</span>
-                </div>
+                <div class="card margin-top">
+                    <div class="card-title-row">
+                        <h3><i class="fa-solid fa-user-xmark text-rose"></i> Outstanding Trip Fund Members</h3>
+                        <span class="count-badge danger" id="badgePendingCount">0 Outstanding</span>
+                    </div>
                 <div class="member-cards-list" id="unpaidMembersList">
                     <!-- Dynamic unpaid list -->
+                </div>
                 </div>
 
                 <!-- Paid Members List -->
@@ -290,15 +292,17 @@
 
                 <!-- Unlocked Admin View -->
                 <div id="adminUnlockedView" class="hidden">
-                    <div class="screen-header">
-                        <div>
-                            <h2><i class="fa-solid fa-user-shield text-emerald"></i> Admin Control Panel</h2>
-                            <p>Approve/Reject Submissions & Manage Trip</p>
+                    <!-- All Members Availability & Advance Status -->
+                    <div class="card margin-top margin-bottom">
+                        <div class="card-title-row">
+                            <div>
+                                <h3><i class="fa-solid fa-users"></i> Trip Roster & Fund Status</h3>
+                                <p>Availability & Trip Fund Status</p>
+                            </div>
+                            <button class="btn btn-xs btn-secondary" id="btnLockAdmin">
+                                <i class="fa-solid fa-lock"></i> Lock Admin
+                            </button>
                         </div>
-                        <button class="btn btn-xs btn-secondary" id="btnLockAdmin">
-                            <i class="fa-solid fa-lock"></i> Lock Admin
-                        </button>
-                    </div>
 
                     <!-- Pending Approval Queue -->
                     <div class="card margin-bottom">
@@ -348,7 +352,7 @@
         <nav class="bottom-nav">
             <button class="nav-item active" data-screen="overview">
                 <i class="fa-solid fa-chart-pie"></i>
-                <span>Advance</span>
+                <span>Trip Fund</span>
             </button>
             <button class="nav-item" data-screen="members">
                 <i class="fa-solid fa-users"></i>
@@ -389,8 +393,8 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="memberAdvance">Advance Amt (₹) *</label>
-                            <input type="number" id="memberAdvance" class="form-control" value="5000" step="100" required>
+                            <label for="memberAdvance">Trip Contribution Amount (₹) *</label>
+                            <input type="number" id="memberAdvance" class="form-control" value="500" step="100" required>
                         </div>
                         <div class="form-group">
                             <label for="memberDays">Days Available *</label>
@@ -445,9 +449,9 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="expensePaidBy">Who Paid Out of Pocket? *</label>
+                            <label for="expensePaidBy">Payer / Paid From *</label>
                             <select id="expensePaidBy" class="form-control" required>
-                                <!-- Dynamic member select options -->
+                                <!-- Dynamic member & Trip Fund options -->
                             </select>
                         </div>
                         <div class="form-group">
@@ -484,7 +488,7 @@
                         <i class="fa-solid fa-plane"></i>
                         <div>
                             <h2>TRIP 2026</h2>
-                            <small>Advance Payment Receipt</small>
+                            <small>Trip Fund Contribution Receipt</small>
                         </div>
                     </div>
                     <div class="rcpt-stamp" id="rcptStampBadge">PENDING</div>
@@ -559,7 +563,7 @@
                         <strong id="mbOutPocket" style="font-size: 15px; color: var(--emerald);">₹0</strong>
                     </div>
                     <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); padding: 10px; border-radius: 10px;">
-                        <span style="font-size: 10px; color: var(--text-muted); display: block; text-transform: uppercase; letter-spacing: 0.5px;">Advance Paid</span>
+                        <span style="font-size: 10px; color: var(--text-muted); display: block; text-transform: uppercase; letter-spacing: 0.5px;">Trip Fund Contributed</span>
                         <strong id="mbAdvance" style="font-size: 15px; color: #3b82f6;">₹0</strong>
                     </div>
                     <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 10px; border-radius: 10px;">
