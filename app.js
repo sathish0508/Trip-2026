@@ -375,8 +375,16 @@ function renderOverview() {
     const pendingQueueItems = STATE.queue.filter(q => q.status === 'Pending Approval');
     const pendingQueueCount = pendingQueueItems.length;
 
-    const totalCollected = paidMembers.reduce((sum, m) => sum + Number(m.advance), 0);
-    const totalTarget = STATE.members.reduce((sum, m) => sum + Number(m.advance), 0);
+    // Calculate actual total collected from approved receipts AND paid members
+    const approvedReceiptsTotal = STATE.receipts
+        .filter(r => String(r.status || 'Approved').toLowerCase() === 'approved')
+        .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    const paidMembersAdvanceTotal = paidMembers
+        .reduce((sum, m) => sum + Number(m.advance || 0), 0);
+
+    const totalCollected = Math.max(approvedReceiptsTotal, paidMembersAdvanceTotal);
+    const totalTarget = STATE.members.reduce((sum, m) => sum + Number(m.advance || 0), 0);
 
     const paidPct = totalTarget > 0 ? Math.round((totalCollected / totalTarget) * 100) : 0;
 
