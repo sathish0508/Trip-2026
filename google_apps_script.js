@@ -176,6 +176,21 @@ function doPost(e) {
       response = { success: true, message: 'Payment approved & saved' };
     }
 
+    // ACTION: REJECT PAYMENT QUEUE
+    else if (action === 'REJECT_ADVANCE' || action === 'REJECT_PAYMENT' || action === 'REJECT_RECEIPT') {
+      const qSh = ss.getSheetByName(SHEET_NAMES.QUEUE);
+      const qRows = qSh.getDataRange().getValues();
+      let updated = false;
+      for (let i = 1; i < qRows.length; i++) {
+        if (String(qRows[i][0]) === String(data.queueId) || (data.receiptNo && String(qRows[i][1]) === String(data.receiptNo))) {
+          qSh.getRange(i + 1, 8).setValue('Rejected');
+          updated = true;
+          break;
+        }
+      }
+      response = { success: true, message: updated ? 'Payment submission marked as Rejected' : 'Queue item not found' };
+    }
+
     // ACTION: ADD EXPENSE
     else if (action === 'ADD_EXPENSE' || action === 'SAVE_EXPENSE' || action === 'EXPENSE') {
       const sh = ss.getSheetByName(SHEET_NAMES.EXPENSES);
