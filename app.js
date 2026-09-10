@@ -49,10 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial Fetch on Launch
     fetchLiveFromGoogleSheet();
 
-    // 10-Second Auto Sync Interval
+    // 2-Second Fast Auto Sync Interval (Near Realtime Cross-Device Sync)
     setInterval(() => {
         fetchLiveFromGoogleSheet();
-    }, 10000);
+    }, 2000);
 
     // Auto-sync when app is brought back to foreground
     document.addEventListener('visibilitychange', () => {
@@ -1302,6 +1302,14 @@ function postToSheetAsync(payload) {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(cleanPayload)
+    })
+    .then(res => {
+        fetchLiveFromGoogleSheet();
+        return res;
+    })
+    .catch(err => {
+        console.error('Post error:', err);
+        fetchLiveFromGoogleSheet();
     });
 }
 
