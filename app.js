@@ -135,7 +135,7 @@ function fetchLiveFromGoogleSheet() {
                 const deletedMemberIds = new Set((STATE.deletedMemberIds || []).map(id => String(id)));
                 const deletedExpenseIds = new Set((STATE.deletedExpenseIds || []).map(id => String(id)));
 
-                // 1. Sync Members (Merge sheet members with local pending members)
+                // 1. Sync Members (Google Sheets as Ground Truth)
                 if (Array.isArray(res.data.members)) {
                     const sheetMembers = res.data.members
                         .filter(m => !deletedMemberIds.has(String(m.ID || m.id)))
@@ -153,15 +153,12 @@ function fetchLiveFromGoogleSheet() {
                             };
                         });
 
-                    const localMembers = STATE.members.filter(m => !deletedMemberIds.has(String(m.id)));
-                    const mergedMembers = [...localMembers];
-
-                    sheetMembers.forEach(sm => {
-                        const idx = mergedMembers.findIndex(lm => String(lm.id) === String(sm.id) || (lm.name && lm.name.trim().toLowerCase() === sm.name.trim().toLowerCase()));
-                        if (idx !== -1) {
-                            mergedMembers[idx] = Object.assign({}, mergedMembers[idx], sm);
-                        } else {
-                            mergedMembers.push(sm);
+                    // Keep local unposted members if any
+                    const localUnpostedMembers = STATE.members.filter(m => m.isLocalPending && !deletedMemberIds.has(String(m.id)));
+                    const mergedMembers = [...sheetMembers];
+                    localUnpostedMembers.forEach(lm => {
+                        if (!mergedMembers.some(sm => String(sm.id) === String(lm.id))) {
+                            mergedMembers.push(lm);
                         }
                     });
 
@@ -214,9 +211,9 @@ function fetchLiveFromGoogleSheet() {
                     STATE.queue = mergedQueue;
                 }
 
-                // 3. Sync Receipts
-                if (Array.isArray(res.data.receipts) && res.data.receipts.length > 0) {
-                    const sheetReceipts = res.data.receipts.map(r => ({
+                // 3. Sync Receipts (Google Sheets as Ground Truth)
+                if (Array.isArray(res.data.receipts)) {
+                    STATE.receipts = res.data.receipts.map(r => ({
                         receiptNo: String(r['Receipt No'] || r.receiptNo || ''),
                         memberId: String(r['Member ID'] || r.memberId || ''),
                         memberName: String(r['Member Name'] || r.memberName || ''),
@@ -225,17 +222,11 @@ function fetchLiveFromGoogleSheet() {
                         utr: String(r['UTR ID'] || r.utr || ''),
                         status: String(r.Status || r.status || 'Approved')
                     }));
-
-                    sheetReceipts.forEach(sr => {
-                        if (!STATE.receipts.some(r => r.receiptNo === sr.receiptNo)) {
-                            STATE.receipts.push(sr);
-                        }
-                    });
                 }
 
-                // 4. Sync Expenses (Merge sheet expenses with local pending expenses)
+                // 4. Sync Expenses (Google Sheets as Ground Truth)
                 if (Array.isArray(res.data.expenses)) {
-                    const sheetExpenses = res.data.expenses
+                    STATE.expenses = res.data.expenses
                         .filter(ex => !deletedExpenseIds.has(String(ex.ID || ex.id)))
                         .map((ex, idx) => {
                             let dStr = String(ex.Date || ex.date || '');
@@ -250,20 +241,6 @@ function fetchLiveFromGoogleSheet() {
                                 splitAmong: parseSplitAmong(ex['Split Among'] || ex.splitAmong || ex.split_among)
                             };
                         }).filter(ex => ex.title && ex.amount > 0);
-
-                    const localExpenses = STATE.expenses.filter(ex => !deletedExpenseIds.has(String(ex.id)));
-                    const mergedExpenses = [...localExpenses];
-
-                    sheetExpenses.forEach(se => {
-                        const existingIdx = mergedExpenses.findIndex(le => String(le.id) === String(se.id));
-                        if (existingIdx !== -1) {
-                            mergedExpenses[existingIdx] = Object.assign({}, mergedExpenses[existingIdx], se);
-                        } else {
-                            mergedExpenses.push(se);
-                        }
-                    });
-
-                    STATE.expenses = mergedExpenses;
                 }
 
                 saveStorage();
