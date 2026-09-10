@@ -455,6 +455,7 @@ function renderMembersLists() {
 function createMemberCardHtml(m, canEdit = false) {
     const isPaid = m.status === 'Paid';
     const isQueue = STATE.queue.some(q => q.memberId === m.id && q.status === 'Pending Approval');
+    const clickAttr = canEdit ? `onclick="toggleMemberStatus('${m.id}')" style="cursor: pointer;"` : `style="cursor: default;"`;
 
     return `
         <div class="member-card">
@@ -471,11 +472,11 @@ function createMemberCardHtml(m, canEdit = false) {
             <div class="member-card-right">
                 <span class="advance-amount">₹${Number(m.advance).toLocaleString('en-IN')}</span>
                 ${isPaid ? `
-                    <span class="badge-status paid" onclick="toggleMemberStatus('${m.id}')" title="Transaction Verified"><i class="fa-solid fa-circle-check"></i> Paid ✔</span>
+                    <span class="badge-status paid" ${clickAttr} title="${canEdit ? 'Click to toggle status' : 'Paid & Verified'}"><i class="fa-solid fa-circle-check"></i> Paid ✔</span>
                 ` : (isQueue ? `
                     <span class="badge-status pending-queue"><i class="fa-solid fa-hourglass-half"></i> In Queue</span>
                 ` : `
-                    <span class="badge-status unpaid" onclick="toggleMemberStatus('${m.id}')"><i class="fa-solid fa-clock"></i> Not Paid</span>
+                    <span class="badge-status unpaid" ${clickAttr} title="${canEdit ? 'Click to toggle status' : 'Not Paid'}"><i class="fa-solid fa-clock"></i> Not Paid</span>
                 `)}
             </div>
         </div>
@@ -483,6 +484,12 @@ function createMemberCardHtml(m, canEdit = false) {
 }
 
 window.toggleMemberStatus = function(id) {
+    if (!STATE.isAdminUnlocked) {
+        showToast('Admin password required to change member payment status', 'warning');
+        switchScreen('admin');
+        return;
+    }
+
     const m = STATE.members.find(mb => mb.id === id);
     if (!m) return;
     
