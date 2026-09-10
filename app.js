@@ -129,26 +129,40 @@ function fetchLiveFromGoogleSheet() {
         .then(res => res.json())
         .then(res => {
             if (res.success && res.data) {
-                const approvedMemberIds = new Set(STATE.receipts.filter(r => r.status === 'Approved').map(r => r.memberId));
-                const approvedReceiptNos = new Set(STATE.receipts.filter(r => r.status === 'Approved').map(r => r.receiptNo));
+                // 1. Sync Receipts FIRST (Google Sheets as Ground Truth)
+                if (Array.isArray(res.data.receipts)) {
+                    STATE.receipts = res.data.receipts.map(r => ({
+                        receiptNo: String(r['Receipt No'] || r.receiptNo || ''),
+                        memberId: String(r['Member ID'] || r.memberId || ''),
+                        memberName: String(r['Member Name'] || r.memberName || ''),
+                        amount: Number(r['Amount Paid'] || r.amount || 0),
+                        date: String(r['Issued Date'] || r.date || ''),
+                        utr: String(r['UTR ID'] || r.utr || ''),
+                        status: String(r.Status || r.status || 'Approved')
+                    }));
+                }
+
+                const approvedMemberIds = new Set(STATE.receipts.filter(r => String(r.status || 'Approved').toLowerCase() === 'approved').map(r => resolveMemberId(r.memberId || r.memberName)).filter(Boolean));
+                const approvedReceiptNos = new Set(STATE.receipts.filter(r => String(r.status || 'Approved').toLowerCase() === 'approved').map(r => r.receiptNo));
                 const approvedQueueIds = new Set((STATE.approvedQueueIds || []).map(id => String(id)));
                 const deletedMemberIds = new Set((STATE.deletedMemberIds || []).map(id => String(id)));
                 const deletedExpenseIds = new Set((STATE.deletedExpenseIds || []).map(id => String(id)));
 
-                // 1. Sync Members (Google Sheets as Ground Truth)
+                // 2. Sync Members (Google Sheets as Ground Truth)
                 if (Array.isArray(res.data.members)) {
                     const sheetMembers = res.data.members
                         .filter(m => !deletedMemberIds.has(String(m.ID || m.id)))
                         .map((m, idx) => {
                             const mId = String(m.ID || m.id || 'm_' + idx);
                             const isLocallyApproved = approvedMemberIds.has(mId);
+                            const sheetStatus = String(m.Status || m.status || 'Not Paid');
                             return {
                                 id: mId,
                                 name: String(m.Name || m.name || ''),
                                 phone: String(m.Phone || m.phone || ''),
-                                advance: Number(m['Advance Required'] || m.advance || 5000),
+                                advance: Number(m['Advance Required'] || m.advance || 500),
                                 days: Number(m['Days Available'] || m.days || 4),
-                                status: isLocallyApproved ? 'Paid' : String(m.Status || m.status || 'Not Paid'),
+                                status: (isLocallyApproved || sheetStatus === 'Paid') ? 'Paid' : 'Not Paid',
                                 utr: String(m.UTR || m.utr || '')
                             };
                         });
@@ -211,18 +225,7 @@ function fetchLiveFromGoogleSheet() {
                     STATE.queue = mergedQueue;
                 }
 
-                // 3. Sync Receipts (Google Sheets as Ground Truth)
-                if (Array.isArray(res.data.receipts)) {
-                    STATE.receipts = res.data.receipts.map(r => ({
-                        receiptNo: String(r['Receipt No'] || r.receiptNo || ''),
-                        memberId: String(r['Member ID'] || r.memberId || ''),
-                        memberName: String(r['Member Name'] || r.memberName || ''),
-                        amount: Number(r['Amount Paid'] || r.amount || 0),
-                        date: String(r['Issued Date'] || r.date || ''),
-                        utr: String(r['UTR ID'] || r.utr || ''),
-                        status: String(r.Status || r.status || 'Approved')
-                    }));
-                }
+
 
                 // 4. Sync Expenses (Google Sheets as Ground Truth)
                 if (Array.isArray(res.data.expenses)) {
