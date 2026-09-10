@@ -957,9 +957,15 @@ function populateMemberSelect() {
     const select = document.getElementById('payMemberSelect');
     if (!select) return;
 
+    const selectedVal = select.value;
+
     select.innerHTML = STATE.members.map(m => `
         <option value="${m.id}">${m.name} (${m.status === 'Paid' ? 'Approved Paid' : 'Not Paid - ₹' + m.advance})</option>
     `).join('');
+
+    if (selectedVal && STATE.members.some(m => m.id === selectedVal)) {
+        select.value = selectedVal;
+    }
 }
 
 function renderIssuedReceiptsList() {
