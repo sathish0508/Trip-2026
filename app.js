@@ -536,9 +536,8 @@ function renderExpensesScreen() {
     const elExpCount = document.getElementById('expItemCount');
     if (elExpCount) elExpCount.textContent = STATE.expenses.length;
 
-    renderMemberBalancesList();
-    renderSettlementMatrix();
     renderExpenseHistory();
+    renderMemberBalancesList();
 }
 
 // Helper to resolve Member ID from either ID or Name
