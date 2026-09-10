@@ -610,11 +610,11 @@ function renderMemberBalancesList() {
         const isPositive = netBalance >= 0;
 
         return `
-            <div class="member-card">
+            <div class="member-card" onclick="showMemberBreakdownModal('${m.id}')" style="cursor: pointer; position: relative;" title="Click to view detailed itemized breakdown">
                 <div class="member-card-left">
                     <div class="avatar-circle">${m.name.charAt(0)}</div>
                     <div>
-                        <strong>${m.name}</strong>
+                        <strong>${m.name} <i class="fa-solid fa-circle-info" style="font-size: 11px; color: var(--emerald); margin-left: 4px;" title="View detailed breakdown"></i></strong>
                         <span style="font-size: 11px; color: var(--text-muted); display: block;">
                             Paid Out: ₹${outOfPocket.toLocaleString('en-IN')} | Advance: ₹${advancePaid.toLocaleString('en-IN')}
                         </span>
@@ -623,18 +623,145 @@ function renderMemberBalancesList() {
                         </span>
                     </div>
                 </div>
-                <div class="member-card-right">
-                    <strong style="color: ${isPositive ? 'var(--emerald)' : 'var(--rose)'}; font-size: 15px;">
-                        ${isPositive ? '+₹' + netBalance.toLocaleString('en-IN') : '-₹' + Math.abs(netBalance).toLocaleString('en-IN')}
-                    </strong>
-                    <span class="count-badge ${isPositive ? 'success' : 'danger'}">
-                        ${isPositive ? 'Gets Refund' : 'Owes Pool'}
-                    </span>
+                <div class="member-card-right" style="display: flex; align-items: center; gap: 8px;">
+                    <div style="text-align: right;">
+                        <strong style="color: ${isPositive ? 'var(--emerald)' : 'var(--rose)'}; font-size: 15px; display: block;">
+                            ${isPositive ? '+₹' + netBalance.toLocaleString('en-IN') : '-₹' + Math.abs(netBalance).toLocaleString('en-IN')}
+                        </strong>
+                        <span class="count-badge ${isPositive ? 'success' : 'danger'}">
+                            ${isPositive ? 'Gets Refund' : 'Owes Pool'}
+                        </span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 12px; color: var(--text-muted);"></i>
                 </div>
             </div>
         `;
     }).join('');
 }
+
+function showMemberBreakdownModal(memberId) {
+    const member = STATE.members.find(m => String(m.id) === String(memberId) || resolveMemberId(m.id) === resolveMemberId(memberId));
+    if (!member) {
+        showToast('Member details not found', 'warning');
+        return;
+    }
+
+    const resolvedMId = member.id;
+
+    // 1. Calculate Out of Pocket (Expenses paid by this member)
+    let outOfPocket = 0;
+    STATE.expenses.forEach(exp => {
+        const amt = Number(exp.amount) || 0;
+        const payerId = resolveMemberId(exp.paidBy || exp.paidByName);
+        if (payerId === resolvedMId && amt > 0) {
+            outOfPocket += amt;
+        }
+    });
+
+    // 2. Advance Paid
+    const advancePaid = (member.status === 'Paid') ? Number(member.advance) : 0;
+    const totalContributed = outOfPocket + advancePaid;
+
+    // 3. Itemized Split History & Total Fair Share Charged
+    let fairShareTotal = 0;
+    const itemsMarkup = [];
+
+    STATE.expenses.forEach(exp => {
+        const amt = Number(exp.amount) || 0;
+        if (amt <= 0) return;
+
+        const payerId = resolveMemberId(exp.paidBy || exp.paidByName);
+        const payerMember = STATE.members.find(x => x.id === payerId);
+        const payerName = payerMember ? payerMember.name : (exp.paidByName || exp.paidBy || 'Pool');
+
+        const rawSplit = (exp.splitAmong && exp.splitAmong.length > 0) ? exp.splitAmong : STATE.members.map(x => x.id);
+        const splitIds = rawSplit.map(s => resolveMemberId(s)).filter(Boolean);
+        const finalSplit = splitIds.length > 0 ? splitIds : STATE.members.map(x => x.id);
+
+        const isIncluded = finalSplit.includes(resolvedMId);
+
+        let theirShare = 0;
+        if (isIncluded) {
+            theirShare = Math.round((amt / finalSplit.length) * 100) / 100;
+            fairShareTotal += theirShare;
+        }
+
+        const formattedDate = exp.date ? new Date(exp.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'N/A';
+
+        itemsMarkup.push(`
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                        <strong style="font-size: 13px; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${exp.title}</strong>
+                        <span class="category-pill ${exp.category ? exp.category.toLowerCase() : 'other'}" style="font-size: 9px; padding: 1px 6px;">${exp.category || 'Expense'}</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 8px;">
+                        <span><i class="fa-regular fa-calendar"></i> ${formattedDate}</span>
+                        <span><i class="fa-solid fa-wallet"></i> Total: ₹${amt.toLocaleString('en-IN')}</span>
+                        <span><i class="fa-solid fa-user"></i> Paid by ${payerName}</span>
+                    </div>
+                </div>
+                <div style="text-align: right; flex-shrink: 0;">
+                    ${isIncluded ? `
+                        <strong style="font-size: 14px; color: var(--amber); display: block;">₹${Math.round(theirShare).toLocaleString('en-IN')}</strong>
+                        <span style="font-size: 10px; color: var(--emerald); display: block;">Charged (1/${finalSplit.length})</span>
+                    ` : `
+                        <strong style="font-size: 13px; color: var(--text-muted); display: block;">₹0</strong>
+                        <span class="badge info" style="font-size: 9px; padding: 1px 5px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">Excluded</span>
+                    `}
+                </div>
+            </div>
+        `);
+    });
+
+    const netBalance = Math.round(totalContributed - fairShareTotal);
+    const isPositive = netBalance >= 0;
+
+    // Populate Modal Elements
+    const avatarEl = document.getElementById('mbAvatar');
+    if (avatarEl) avatarEl.innerText = member.name.charAt(0);
+    
+    const nameEl = document.getElementById('mbMemberName');
+    if (nameEl) nameEl.innerText = member.name;
+    
+    const statusEl = document.getElementById('mbMemberStatus');
+    if (statusEl) statusEl.innerText = `Status: ${member.status || 'Active'} | Role: ${member.role || 'Member'}`;
+    
+    const outPocketEl = document.getElementById('mbOutPocket');
+    if (outPocketEl) outPocketEl.innerText = `₹${outOfPocket.toLocaleString('en-IN')}`;
+    
+    const advanceEl = document.getElementById('mbAdvance');
+    if (advanceEl) advanceEl.innerText = `₹${advancePaid.toLocaleString('en-IN')}`;
+    
+    const fairShareEl = document.getElementById('mbFairShare');
+    if (fairShareEl) fairShareEl.innerText = `₹${Math.round(fairShareTotal).toLocaleString('en-IN')}`;
+    
+    const mbNetBalanceEl = document.getElementById('mbNetBalance');
+    const mbNetBalanceBox = document.getElementById('mbNetBalanceBox');
+    
+    if (mbNetBalanceEl && mbNetBalanceBox) {
+        if (isPositive) {
+            mbNetBalanceEl.style.color = 'var(--emerald)';
+            mbNetBalanceEl.innerText = `+₹${netBalance.toLocaleString('en-IN')} (Refund)`;
+            mbNetBalanceBox.style.background = 'rgba(16, 185, 129, 0.08)';
+            mbNetBalanceBox.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+        } else {
+            mbNetBalanceEl.style.color = 'var(--rose)';
+            mbNetBalanceEl.innerText = `-₹${Math.abs(netBalance).toLocaleString('en-IN')} (Owes)`;
+            mbNetBalanceBox.style.background = 'rgba(244, 63, 94, 0.08)';
+            mbNetBalanceBox.style.borderColor = 'rgba(244, 63, 94, 0.2)';
+        }
+    }
+
+    const itemCountEl = document.getElementById('mbItemCount');
+    if (itemCountEl) itemCountEl.innerText = `${STATE.expenses.length} item${STATE.expenses.length === 1 ? '' : 's'}`;
+    
+    const listEl = document.getElementById('mbItemizedList');
+    if (listEl) listEl.innerHTML = itemsMarkup.length > 0 ? itemsMarkup.join('') : `<p class="text-center" style="color: var(--text-muted); padding: 12px;">No expenses logged yet.</p>`;
+
+    openModal('memberBreakdownModal');
+}
+window.showMemberBreakdownModal = showMemberBreakdownModal;
 
 function renderSettlementMatrix() {
     const container = document.getElementById('settlementMatrixList');
