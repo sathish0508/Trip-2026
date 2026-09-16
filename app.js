@@ -383,8 +383,8 @@ function renderOverview() {
         .filter(r => String(r.status || 'Approved').toLowerCase() === 'approved')
         .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-    const paidMembersAdvanceTotal = paidMembers
-        .reduce((sum, m) => sum + Number(m.advance || 0), 0);
+    const paidMembersAdvanceTotal = STATE.members
+        .reduce((sum, m) => sum + getMemberAdvancePaid(m), 0);
 
     const totalCollected = Math.max(approvedReceiptsTotal, paidMembersAdvanceTotal);
     const totalTarget = STATE.members.reduce((sum, m) => sum + Number(m.advance || 0), 0);
@@ -485,6 +485,8 @@ function createMemberCardHtml(m, canEdit = false) {
     const isPaid = m.status === 'Paid';
     const isQueue = STATE.queue.some(q => q.memberId === m.id && q.status === 'Pending Approval');
     const clickAttr = canEdit ? `onclick="toggleMemberStatus('${m.id}')" style="cursor: pointer;"` : `style="cursor: default;"`;
+    const collectedAmt = getMemberAdvancePaid(m);
+    const displayAmt = collectedAmt > 0 ? collectedAmt : Number(m.advance || 0);
 
     return `
         <div class="member-card">
@@ -499,7 +501,7 @@ function createMemberCardHtml(m, canEdit = false) {
                 </div>
             </div>
             <div class="member-card-right">
-                <span class="advance-amount">₹${Number(m.advance).toLocaleString('en-IN')}</span>
+                <span class="advance-amount">₹${displayAmt.toLocaleString('en-IN')}</span>
                 ${isPaid ? `
                     <span class="badge-status paid" ${clickAttr} title="${canEdit ? 'Click to toggle status' : 'Paid & Verified'}"><i class="fa-solid fa-circle-check"></i> Paid ✔</span>
                 ` : (isQueue ? `
@@ -565,6 +567,31 @@ function resolveMemberId(identifier) {
     return found ? found.id : null;
 }
 
+// Helper to calculate total advance / payments collected for a member (aggregates multiple receipts)
+function getMemberAdvancePaid(m) {
+    if (!m) return 0;
+    const memberObj = typeof m === 'object' ? m : STATE.members.find(x => String(x.id) === String(m) || resolveMemberId(x.id) === resolveMemberId(m));
+    const targetMId = memberObj ? memberObj.id : m;
+
+    const approvedReceiptsSum = STATE.receipts
+        .filter(r => {
+            const rMemberId = resolveMemberId(r.memberId || r.memberName);
+            const status = String(r.status || 'Approved').toLowerCase();
+            return (rMemberId === targetMId || String(r.memberId) === String(targetMId)) && status === 'approved';
+        })
+        .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    if (approvedReceiptsSum > 0) {
+        return approvedReceiptsSum;
+    }
+
+    if (memberObj && memberObj.status === 'Paid') {
+        return Number(memberObj.advance || 0);
+    }
+
+    return 0;
+}
+
 function renderMemberBalancesList() {
     const container = document.getElementById('memberBalancesList');
     if (!container) return;
@@ -608,7 +635,7 @@ function renderMemberBalancesList() {
 
     container.innerHTML = STATE.members.map(m => {
         const outOfPocket = memberPaidMap[m.id] || 0;
-        const advancePaid = (m.status === 'Paid') ? Number(m.advance) : 0;
+        const advancePaid = getMemberAdvancePaid(m);
         const totalContributed = outOfPocket + advancePaid;
         const fairShare = memberShareMap[m.id] || 0;
         const netBalance = Math.round(totalContributed - fairShare);
@@ -665,7 +692,7 @@ function showMemberBreakdownModal(memberId) {
     });
 
     // 2. Advance Paid
-    const advancePaid = (member.status === 'Paid') ? Number(member.advance) : 0;
+    const advancePaid = getMemberAdvancePaid(member);
     const totalContributed = outOfPocket + advancePaid;
 
     // 3. Itemized Split History & Total Fair Share Charged
@@ -817,7 +844,7 @@ function renderSettlementMatrix() {
 
     STATE.members.forEach(m => {
         const outOfPocket = memberPaidMap[m.id] || 0;
-        const advancePaid = (m.status === 'Paid') ? Number(m.advance) : 0;
+        const advancePaid = getMemberAdvancePaid(m);
         const totalContributed = outOfPocket + advancePaid;
         const fairShare = memberShareMap[m.id] || 0;
         const net = totalContributed - fairShare;
@@ -1003,7 +1030,7 @@ function renderAdminScreen() {
                     <div class="avatar-circle">${m.name.charAt(0)}</div>
                     <div>
                         <strong>${m.name}</strong>
-                        <span style="font-size: 12px; color: var(--text-secondary); display: block;">₹${m.advance} | ${m.status}</span>
+                        <span style="font-size: 12px; color: var(--text-secondary); display: block;">₹${getMemberAdvancePaid(m) || m.advance} | ${m.status}</span>
                     </div>
                 </div>
                 <div style="display: flex; gap: 6px;">
@@ -1150,9 +1177,11 @@ function populateMemberSelect() {
 
     const selectedVal = select.value;
 
-    select.innerHTML = STATE.members.map(m => `
-        <option value="${m.id}">${m.name} (${m.status === 'Paid' ? 'Approved Paid' : 'Not Paid - ₹' + m.advance})</option>
-    `).join('');
+    select.innerHTML = STATE.members.map(m => {
+        const paidAmt = getMemberAdvancePaid(m);
+        const label = paidAmt > 0 ? `Paid ₹${paidAmt.toLocaleString('en-IN')}` : `Not Paid - ₹${Number(m.advance).toLocaleString('en-IN')}`;
+        return `<option value="${m.id}">${m.name} (${label})</option>`;
+    }).join('');
 
     if (selectedVal && STATE.members.some(m => m.id === selectedVal)) {
         select.value = selectedVal;
