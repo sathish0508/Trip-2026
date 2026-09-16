@@ -170,11 +170,24 @@
 
                 <!-- Expense Stats Card -->
                 <div class="hero-card" style="background: linear-gradient(135deg, #059669, #10b981);">
-                    <div class="hero-top">
-                        <span>Total Actual Trip Spending</span>
-                        <h2 id="expTotalAmount">₹0</h2>
+                    <div class="hero-top" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <span>Total Actual Spending</span>
+                            <h2 id="expTotalAmount">₹0</h2>
+                        </div>
+                        <div style="text-align: right;">
+                            <span>Remaining Fund Balance</span>
+                            <h2 id="expFundBalance" style="color: #ffffff;">₹0</h2>
+                        </div>
                     </div>
                     <div class="hero-stats-row margin-top">
+                        <div class="mini-stat">
+                            <i class="fa-solid fa-piggy-bank text-emerald"></i>
+                            <div>
+                                <small>Total Collected</small>
+                                <strong id="expTotalCollected">₹0</strong>
+                            </div>
+                        </div>
                         <div class="mini-stat">
                             <i class="fa-solid fa-users text-emerald"></i>
                             <div>

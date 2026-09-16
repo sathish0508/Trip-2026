@@ -540,8 +540,33 @@ function renderExpensesScreen() {
     const totalMembers = STATE.members.length || 1;
     const avgPerHead = Math.round(totalExp / totalMembers);
 
+    // Calculate Total Fund Collected (approved receipts & member advances)
+    const approvedReceiptsTotal = STATE.receipts
+        .filter(r => String(r.status || 'Approved').toLowerCase() === 'approved')
+        .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const paidMembersAdvanceTotal = STATE.members
+        .reduce((sum, m) => sum + getMemberAdvancePaid(m), 0);
+    const totalCollected = Math.max(approvedReceiptsTotal, paidMembersAdvanceTotal);
+
+    // Remaining Fund Balance = Total Collected - Total Expenses
+    const fundBalance = totalCollected - totalExp;
+
     const elExpTotal = document.getElementById('expTotalAmount');
     if (elExpTotal) elExpTotal.textContent = `₹${totalExp.toLocaleString('en-IN')}`;
+
+    const elExpCollected = document.getElementById('expTotalCollected');
+    if (elExpCollected) elExpCollected.textContent = `₹${totalCollected.toLocaleString('en-IN')}`;
+
+    const elExpBalance = document.getElementById('expFundBalance');
+    if (elExpBalance) {
+        if (fundBalance >= 0) {
+            elExpBalance.textContent = `+₹${fundBalance.toLocaleString('en-IN')}`;
+            elExpBalance.style.color = '#ffffff';
+        } else {
+            elExpBalance.textContent = `-₹${Math.abs(fundBalance).toLocaleString('en-IN')}`;
+            elExpBalance.style.color = '#fca5a5';
+        }
+    }
 
     const elExpAvg = document.getElementById('expAvgPerHead');
     if (elExpAvg) elExpAvg.textContent = `₹${avgPerHead.toLocaleString('en-IN')}`;
