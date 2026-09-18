@@ -5,7 +5,7 @@
 
 const STATE = {
     tripTitle: 'Trip 2026',
-    adminPassword: '1234',
+    adminPassword: '7094720',
     isAdminUnlocked: false,
     activeScreen: 'overview',
     members: [],
@@ -87,7 +87,7 @@ function loadStorage() {
         try {
             const data = JSON.parse(raw);
             STATE.tripTitle = 'Trip 2026';
-            STATE.adminPassword = data.adminPassword || '1234';
+            STATE.adminPassword = (data.adminPassword && data.adminPassword !== '1234') ? data.adminPassword : '7094720';
             STATE.activeScreen = data.activeScreen || 'overview';
             STATE.members = data.members || SEED_MEMBERS;
             STATE.receipts = data.receipts || SEED_RECEIPTS;

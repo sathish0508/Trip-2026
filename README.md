@@ -1,6 +1,6 @@
 # 📱 Trip 2026 - Mobile Web App with Google Sheets Live Sync
 
-A modern, mobile-first web application for tracking trip member availability, advance payments (Paid vs Not Paid), Admin Approval Queue with password protection (`1234`), downloadable digital payment receipts, and **live real-time synchronization with Google Sheets**.
+A modern, mobile-first web application for tracking trip member availability, advance payments (Paid vs Not Paid), Admin Approval Queue with password protection (`7094720`), downloadable digital payment receipts, and **live real-time synchronization with Google Sheets**.
 
 ---
 
@@ -30,7 +30,7 @@ Follow these 4 simple steps to connect your app to your Google Sheet (`1877_oKGn
 
 ### Step 4: Paste Web App URL in App Settings
 1. Open your **Trip 2026** web app.
-2. Navigate to the **Admin** tab (Unlock with password `1234`).
+2. Navigate to the **Admin** tab (Unlock with password `7094720`).
 3. Scroll down to **Google Sheet Settings**.
 4. Paste your copied **Web App URL** into the input field and click **Save & Test Sync**.
 
